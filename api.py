@@ -37,109 +37,13 @@ StatusCodes = {
 
 
 ##########################################################
-## DEMO ENDPOINTS
-## (the endpoints get_all_departments and add_departments serve only as examples!)
-##########################################################
-
-##
-## Demo GET
-##
-## Obtain all departments in JSON format
-##
-
-@app.route('/departments/', methods=['GET'])
-def get_all_departments():
-    logger.info('GET /departments')
-
-    conn = db_connection()
-    cur = conn.cursor()
-
-    try:
-        cur.execute('SELECT ndep, nome, local FROM dep')
-        rows = cur.fetchall()
-
-        logger.debug('GET /departments - parse')
-        Results = []
-        for row in rows:
-            logger.debug(row)
-            content = {'ndep': int(row[0]), 'nome': row[1], 'localidade': row[2]}
-            Results.append(content)  # appending to the payload to be returned
-
-        response = {'status': StatusCodes['success'], 'results': Results}
-
-    except (Exception, psycopg2.DatabaseError) as error:
-        logger.error(f'GET /departments - error: {error}')
-        response = {'status': StatusCodes['internal_error'], 'errors': str(error)}
-
-    finally:
-        if conn is not None:
-            conn.close()
-
-    return flask.jsonify(response)
-
-##
-## Demo POST
-##
-## Add a new department in a JSON payload
-##
-
-@app.route('/departments/', methods=['POST'])
-def add_departments():
-    logger.info('POST /departments')
-    payload = flask.request.get_json()
-
-    conn = db_connection()
-    cur = conn.cursor()
-
-    logger.debug(f'POST /departments - payload: {payload}')
-
-    # do not forget to validate every argument, e.g.,:
-    if 'ndep' not in payload:
-        response = {'status': StatusCodes['api_error'], 'results': 'ndep value not in payload'}
-        return flask.jsonify(response)
-
-    # parameterized queries, good for security and performance
-    statement = 'INSERT INTO dep (ndep, nome, local) VALUES (%s, %s, %s)'
-    values = (payload['ndep'], payload['nome'], payload['local'])
-
-    try:
-        cur.execute(statement, values)
-
-        # commit the transaction
-        conn.commit()
-        response = {'status': StatusCodes['success'], 'results': f'Inserted dep {payload["ndep"]}'}
-
-    except (Exception, psycopg2.DatabaseError) as error:
-        logger.error(f'POST /departments - error: {error}')
-        response = {'status': StatusCodes['internal_error'], 'errors': str(error)}
-
-        # an error occurred, rollback
-        conn.rollback()
-
-    finally:
-        if conn is not None:
-            conn.close()
-
-    return flask.jsonify(response)
-
-##########################################################
-## DEMO ENDPOINTS END
-##########################################################
-
-
-
-
-
-
-
-##########################################################
 ## DATABASE ACCESS
 ##########################################################
 
 def db_connection():
     db = psycopg2.connect(
 
-        #falta mudar isto para um ficheiro
+        #Falta mudar isto para um ficheiro
         user='aulaspl',
         password='aulaspl',
         host='127.0.0.1',
@@ -255,7 +159,6 @@ def login_user():
 
     return flask.jsonify(response)
 
-
 @app.route('/dbproj/register/student', methods=['POST'])
 @token_required
 @role_required(['staff'])
@@ -266,35 +169,46 @@ def register_student():
     password = data.get('password')
     district = data.get('district')
 
-    if not username or not email or not password:
-        return flask.jsonify({'status': StatusCodes['api_error'], 'errors': 'Username, email, and password are required', 'results': None})
+    if not username or not email or not password or not district:
+        return flask.jsonify({'status': StatusCodes['api_error'], 'errors': 'Username, email, password, and district are required', 'results': None})
 
     try:
         conn = db_connection()
         cur = conn.cursor()
 
         cur.execute(
-            """
-            INSERT INTO student (name, email, password,district)
-            VALUES (%s, %s, %s,%s)
-            RETURNING id
-            """,
-            (username, email, password,district)
+        """
+        INSERT INTO person (name, email, password)
+        VALUES (%s, %s, %s)
+        RETURNING id
+        """,
+        (username, email, password)
         )
-        student_id = cur.fetchone()[0]
+        person_id = cur.fetchone()[0]
+
+        cur.execute(
+        """
+        INSERT INTO student (person_id, district)
+        VALUES (%s, %s)
+        """,
+        (person_id, district)
+    )
+
         conn.commit()
 
-        return flask.jsonify({'status': StatusCodes['success'], 'errors': None, 'results': student_id})
+        return flask.jsonify({'status': StatusCodes['success'], 'errors': None, 'results': person_id})
 
     except Exception as error:
         conn.rollback()
         return flask.jsonify({'status': StatusCodes['internal_error'], 'errors': str(error), 'results': None})
+
     finally:
         if conn:
             conn.close()
 
 @app.route('/dbproj/register/staff', methods=['POST'])
 @token_required
+@role_required(['staff'])
 def register_staff():
     data = flask.request.get_json()
     username = data.get('username')
@@ -302,14 +216,55 @@ def register_staff():
     password = data.get('password')
 
     if not username or not email or not password:
-        return flask.jsonify({'status': StatusCodes['api_error'], 'errors': 'Username, email, and password are required', 'results': None})
-    
-    resultUserId = random.randint(1, 200) # TODO
+        return flask.jsonify({
+            'status': StatusCodes['api_error'],
+            'errors': 'Username, email, and password are required',
+            'results': None
+        })
 
-    response = {'status': StatusCodes['success'], 'errors': None, 'results': resultUserId}
-    return flask.jsonify(response)
+    try:
+        conn = db_connection()
+        cur = conn.cursor()
+
+        # Inserção em person
+        cur.execute(
+            """
+            INSERT INTO person (name, email, password)
+            VALUES (%s, %s, %s)
+            RETURNING id
+            """,
+            (username, email, password)
+        )
+        person_id = cur.fetchone()[0]
+
+        # Inserção em staff referenciando person
+        cur.execute(
+            """
+            INSERT INTO staff (person_id)
+            VALUES (%s)
+            """,
+            (person_id,)
+        )
+
+        conn.commit()
+        return flask.jsonify({'status': StatusCodes['success'], 'errors': None, 'results': person_id})
+
+    except Exception as error:
+        conn.rollback()
+        return flask.jsonify({
+            'status': StatusCodes['internal_error'],
+            'errors': str(error),
+            'results': None
+        })
+
+    finally:
+        if conn:
+            conn.close()
+
+
 
 @app.route('/dbproj/register/instructor', methods=['POST'])
+@role_required(['staff'])
 @token_required
 def register_instructor():
     data = flask.request.get_json()
@@ -318,15 +273,60 @@ def register_instructor():
     password = data.get('password')
 
     if not username or not email or not password:
-        return flask.jsonify({'status': StatusCodes['api_error'], 'errors': 'Username, email, and password are required', 'results': None})
+        return flask.jsonify({
+            'status': StatusCodes['api_error'],
+            'errors': 'Username, email, and password are required',
+            'results': None
+        })
     
-    resultUserId = random.randint(1, 200) # TODO
+    try:
+        conn = db_connection()
+        cur = conn.cursor()
 
-    response = {'status': StatusCodes['success'], 'errors': None, 'results': resultUserId}
-    return flask.jsonify(response)
+        # 1. Inserir na tabela person
+        cur.execute(
+            """
+            INSERT INTO person (name, email, password)
+            VALUES (%s, %s, %s)
+            RETURNING id
+            """,
+            (username, email, password)
+        )
+        person_id = cur.fetchone()[0]
+
+        # 2. Inserir na tabela instructor
+        cur.execute(
+            """
+            INSERT INTO instructor (person_id)
+            VALUES (%s)
+            """,
+            (person_id,)
+        )
+
+        conn.commit()
+
+        return flask.jsonify({
+            'status': StatusCodes['success'],
+            'errors': None,
+            'results': person_id
+        })
+
+    except Exception as error:
+        conn.rollback()
+        return flask.jsonify({
+            'status': StatusCodes['internal_error'],
+            'errors': str(error),
+            'results': None
+        })
+
+    finally:
+        if conn:
+            conn.close()
+
 
 @app.route('/dbproj/enroll_degree/<degree_id>', methods=['POST'])
 @token_required
+@role_required(['staff'])
 def enroll_degree(degree_id):
     data = flask.request.get_json()
     student_id = data.get('student_id')
@@ -335,8 +335,35 @@ def enroll_degree(degree_id):
     if not student_id or not date:
         return flask.jsonify({'status': StatusCodes['api_error'], 'errors': 'Student ID and date are required', 'results': None})
     
-    response = {'status': StatusCodes['success'], 'errors': None}
-    return flask.jsonify(response)
+    try:
+        conn = db_connection()
+        cur = conn.cursor()
+
+        # Inserção na tabela de associação
+        cur.execute("""
+            INSERT INTO student_degree (student_id, degree_ndegree, start_date)
+            VALUES (%s, %s, %s)
+        """, (student_id, degree_id, date))
+
+        conn.commit()
+
+        return flask.jsonify({
+            'status': StatusCodes['success'],
+            'errors': None,
+            'results': f"Student {student_id} enrolled in degree {degree_id} on {date}"
+        })
+
+    except Exception as e:
+        conn.rollback()
+        return flask.jsonify({
+            'status': StatusCodes['internal_error'],
+            'errors': str(e),
+            'results': None
+        })
+
+    finally:
+        if conn:
+            conn.close()
 
 @app.route('/dbproj/enroll_activity/<activity_id>', methods=['POST'])
 @token_required

@@ -1,0 +1,60 @@
+INFO:logger:API stubs online: http://127.0.0.1:8080
+INFO:werkzeug:[31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on http://127.0.0.1:8080
+INFO:werkzeug:[33mPress CTRL+C to quit[0m
+INFO:werkzeug: * Restarting with stat
+INFO:logger:API stubs online: http://127.0.0.1:8080
+WARNING:werkzeug: * Debugger is active!
+INFO:werkzeug: * Debugger PIN: 813-831-135
+INFO:logger:token: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VybmFtZSI6InRlc3R1c2VyQGdtYWlsLmNvbSIsImlkIjoxMDAxLCJyb2xlIjoic3RhZmYiLCJleHAiOjE3NDc5MzQ5MDd9.NcY3htEgAHfKjMD-ALhrpAWnLmhgoixblWxR7xQt0bc
+INFO:werkzeug:127.0.0.1 - - [22/May/2025 17:47:36] "POST /dbproj/register/staff HTTP/1.1" 200 -
+INFO:werkzeug: * Detected change in 'c:\\Users\\simao\\Desktop\\Uni\\Pasta_Universidade\\4ªAno(2 Informática)\\2ºSemestre\\Bases de Dados\\Projeto\\projeto\\bd-projeto\\api.py', reloading
+INFO:werkzeug: * Restarting with stat
+INFO:logger:API stubs online: http://127.0.0.1:8080
+WARNING:werkzeug: * Debugger is active!
+INFO:werkzeug: * Debugger PIN: 813-831-135
+INFO:logger:token: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VybmFtZSI6InRlc3R1c2VyQGdtYWlsLmNvbSIsImlkIjoxMDAxLCJyb2xlIjoic3RhZmYiLCJleHAiOjE3NDc5MzQ5MDd9.NcY3htEgAHfKjMD-ALhrpAWnLmhgoixblWxR7xQt0bc
+INFO:werkzeug:127.0.0.1 - - [22/May/2025 17:48:50] "POST /dbproj/register/staff HTTP/1.1" 200 -
+INFO:werkzeug: * Detected change in 'c:\\Users\\simao\\Desktop\\Uni\\Pasta_Universidade\\4ªAno(2 Informática)\\2ºSemestre\\Bases de Dados\\Projeto\\projeto\\bd-projeto\\api.py', reloading
+INFO:werkzeug: * Restarting with stat
+INFO:logger:API stubs online: http://127.0.0.1:8080
+WARNING:werkzeug: * Debugger is active!
+INFO:werkzeug: * Debugger PIN: 813-831-135
+INFO:logger:token: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VybmFtZSI6InRlc3R1c2VyQGdtYWlsLmNvbSIsImlkIjoxMDAxLCJyb2xlIjoic3RhZmYiLCJleHAiOjE3NDc5MzQ5MDd9.NcY3htEgAHfKjMD-ALhrpAWnLmhgoixblWxR7xQt0bc
+INFO:werkzeug:127.0.0.1 - - [22/May/2025 17:49:41] "[35m[1mPOST /dbproj/register/staff HTTP/1.1[0m" 500 -
+INFO:werkzeug: * Detected change in 'c:\\Users\\simao\\Desktop\\Uni\\Pasta_Universidade\\4ªAno(2 Informática)\\2ºSemestre\\Bases de Dados\\Projeto\\projeto\\bd-projeto\\api.py', reloading
+INFO:werkzeug: * Restarting with stat
+INFO:logger:API stubs online: http://127.0.0.1:8080
+WARNING:werkzeug: * Debugger is active!
+INFO:werkzeug: * Debugger PIN: 813-831-135
+INFO:logger:token: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VybmFtZSI6InRlc3R1c2VyQGdtYWlsLmNvbSIsImlkIjoxMDAxLCJyb2xlIjoic3RhZmYiLCJleHAiOjE3NDc5MzQ5MDd9.NcY3htEgAHfKjMD-ALhrpAWnLmhgoixblWxR7xQt0bc
+INFO:werkzeug:127.0.0.1 - - [22/May/2025 17:50:07] "POST /dbproj/register/staff HTTP/1.1" 200 -
+INFO:werkzeug: * Detected change in 'c:\\Users\\simao\\Desktop\\Uni\\Pasta_Universidade\\4ªAno(2 Informática)\\2ºSemestre\\Bases de Dados\\Projeto\\projeto\\bd-projeto\\api.py', reloading
+INFO:werkzeug: * Restarting with stat
+INFO:logger:API stubs online: http://127.0.0.1:8080
+WARNING:werkzeug: * Debugger is active!
+INFO:werkzeug: * Debugger PIN: 813-831-135
+INFO:logger:token: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VybmFtZSI6InRlc3R1c2VyQGdtYWlsLmNvbSIsImlkIjoxMDAxLCJyb2xlIjoic3RhZmYiLCJleHAiOjE3NDc5MzQ5MDd9.NcY3htEgAHfKjMD-ALhrpAWnLmhgoixblWxR7xQt0bc
+INFO:werkzeug:127.0.0.1 - - [22/May/2025 17:50:36] "POST /dbproj/register/staff HTTP/1.1" 200 -
+INFO:werkzeug: * Detected change in 'c:\\Users\\simao\\Desktop\\Uni\\Pasta_Universidade\\4ªAno(2 Informática)\\2ºSemestre\\Bases de Dados\\Projeto\\projeto\\bd-projeto\\api.py', reloading
+INFO:werkzeug: * Restarting with stat
+INFO:logger:API stubs online: http://127.0.0.1:8080
+WARNING:werkzeug: * Debugger is active!
+INFO:werkzeug: * Debugger PIN: 813-831-135
+INFO:logger:token: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VybmFtZSI6InRlc3R1c2VyQGdtYWlsLmNvbSIsImlkIjoxMDAxLCJyb2xlIjoic3RhZmYiLCJleHAiOjE3NDc5MzQ5MDd9.NcY3htEgAHfKjMD-ALhrpAWnLmhgoixblWxR7xQt0bc
+INFO:werkzeug:127.0.0.1 - - [22/May/2025 17:51:20] "POST /dbproj/register/staff HTTP/1.1" 200 -
+INFO:werkzeug: * Detected change in 'c:\\Users\\simao\\Desktop\\Uni\\Pasta_Universidade\\4ªAno(2 Informática)\\2ºSemestre\\Bases de Dados\\Projeto\\projeto\\bd-projeto\\api.py', reloading
+INFO:werkzeug: * Restarting with stat
+INFO:logger:API stubs online: http://127.0.0.1:8080
+WARNING:werkzeug: * Debugger is active!
+INFO:werkzeug: * Debugger PIN: 813-831-135
+INFO:logger:token: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VybmFtZSI6InRlc3R1c2VyQGdtYWlsLmNvbSIsImlkIjoxMDAxLCJyb2xlIjoic3RhZmYiLCJleHAiOjE3NDc5MzQ5MDd9.NcY3htEgAHfKjMD-ALhrpAWnLmhgoixblWxR7xQt0bc
+INFO:werkzeug:127.0.0.1 - - [22/May/2025 17:52:34] "POST /dbproj/register/staff HTTP/1.1" 200 -
+INFO:logger:token: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VybmFtZSI6InRlc3R1c2VyQGdtYWlsLmNvbSIsImlkIjoxMDAxLCJyb2xlIjoic3RhZmYiLCJleHAiOjE3NDc5MzQ5MDd9.NcY3htEgAHfKjMD-ALhrpAWnLmhgoixblWxR7xQt0bc
+INFO:werkzeug:127.0.0.1 - - [22/May/2025 17:52:46] "POST /dbproj/register/staff HTTP/1.1" 200 -
+INFO:logger:token: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VybmFtZSI6InRlc3R1c2VyQGdtYWlsLmNvbSIsImlkIjoxMDAxLCJyb2xlIjoic3RhZmYiLCJleHAiOjE3NDc5MzQ5MDd9.NcY3htEgAHfKjMD-ALhrpAWnLmhgoixblWxR7xQt0bc
+INFO:werkzeug:127.0.0.1 - - [22/May/2025 17:52:49] "POST /dbproj/register/staff HTTP/1.1" 200 -
+INFO:logger:token: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VybmFtZSI6InRlc3R1c2VyQGdtYWlsLmNvbSIsImlkIjoxMDAxLCJyb2xlIjoic3RhZmYiLCJleHAiOjE3NDc5MzQ5MDd9.NcY3htEgAHfKjMD-ALhrpAWnLmhgoixblWxR7xQt0bc
+INFO:werkzeug:127.0.0.1 - - [22/May/2025 17:54:21] "POST /dbproj/register/instructor HTTP/1.1" 200 -
+INFO:werkzeug: * Detected change in 'c:\\Users\\simao\\Desktop\\Uni\\Pasta_Universidade\\4ªAno(2 Informática)\\2ºSemestre\\Bases de Dados\\Projeto\\projeto\\bd-projeto\\api.py', reloading
+INFO:werkzeug: * Restarting with stat
