@@ -17,6 +17,7 @@
 
 
 import flask
+from flask import g
 import logging
 import psycopg2
 import time
@@ -41,6 +42,9 @@ StatusCodes = {
 ##########################################################
 
 def db_connection():
+
+
+
     db = psycopg2.connect(
 
         #Falta mudar isto para um ficheiro
@@ -57,6 +61,7 @@ def db_connection():
 ## AUTHENTICATION HELPERS
 ##########################################################
 
+
 def token_required(f):
     @wraps(f)
     def decorated(*args, **kwargs):
@@ -64,39 +69,52 @@ def token_required(f):
         logger.info(f'token: {token}')
 
         if not token:
-            return flask.jsonify({'status': StatusCodes['unauthorized'], 'errors': 'Token is missing!', 'results': None})
-#*
-        try:  
+            return flask.jsonify({
+                'status': StatusCodes['unauthorized'],
+                'errors': 'Token is missing!',
+                'results': None
+            }), 401
+
+        try:
             token = token.replace("Bearer ", "")
-            jwt.decode(token, app.config['JWT_SECRET_KEY'], algorithms=['HS256'])
+            data = jwt.decode(token, app.config['JWT_SECRET_KEY'], algorithms=['HS256'])
+            
+            # Guardar user_id e role no contexto da request
+            g.user_id = data.get('user_id')
+            g.role = data.get('role')
+
+            if not g.user_id:
+                raise jwt.InvalidTokenError("Missing user_id in token")
+
         except jwt.ExpiredSignatureError:
-            return flask.jsonify({'status': StatusCodes['unauthorized'], 'errors': 'Token expired', 'results': None})
-        except jwt.InvalidTokenError:
-            return flask.jsonify({'status': StatusCodes['unauthorized'], 'errors': 'Invalid token', 'results': None})
-#*
+            return flask.jsonify({
+                'status': StatusCodes['unauthorized'],
+                'errors': 'Token expired',
+                'results': None
+            }), 401
+        except jwt.InvalidTokenError as e:
+            return flask.jsonify({
+                'status': StatusCodes['unauthorized'],
+                'errors': f'Invalid token: {str(e)}',
+                'results': None
+            }), 401
+
         return f(*args, **kwargs)
     return decorated
+
 
 
 def role_required(allowed_roles):
     def decorator(f):
         @wraps(f)
         def wrapper(*args, **kwargs):
-            token = flask.request.headers.get('Authorization')
-            if not token:
-                return flask.jsonify({'status': 401, 'errors': 'Missing token', 'results': None})
-
-            try:
-                token = token.replace("Bearer ", "")
-                payload = jwt.decode(token, app.config['JWT_SECRET_KEY'], algorithms=["HS256"])
-                role = payload.get('role')
-                if role not in allowed_roles:
-                    return flask.jsonify({'status': 403, 'errors': 'Permission denied', 'results': None})
-            except jwt.ExpiredSignatureError:
-                return flask.jsonify({'status': 401, 'errors': 'Token expired', 'results': None})
-            except jwt.InvalidTokenError:
-                return flask.jsonify({'status': 401, 'errors': 'Invalid token', 'results': None})
-
+            role = getattr(g, 'role', None)
+            if role not in allowed_roles:
+                return flask.jsonify({
+                    'status': 403,
+                    'errors': 'Permission denied',
+                    'results': None
+                }), 403
             return f(*args, **kwargs)
         return wrapper
     return decorator
@@ -112,7 +130,11 @@ def login_user():
     password = data.get('password')
 
     if not username or not password:
-        return flask.jsonify({'status': StatusCodes['api_error'], 'errors': 'Email and password are required', 'results': None})
+        return flask.jsonify({
+            'status': StatusCodes['api_error'],
+            'errors': 'Email and password are required',
+            'results': None
+        })
 
     try:
         conn = db_connection()
@@ -120,44 +142,60 @@ def login_user():
 
         query = """
             SELECT id, name, email, password,  
-                CASE
-                    WHEN id IN (SELECT id FROM student) THEN 'student'
-                    WHEN id IN (SELECT id FROM staff) THEN 'staff'
-                    WHEN id IN (SELECT id FROM instructor) THEN 'instructor'
-                    ELSE 'unknown'
-                END AS role
-            FROM person
-            WHERE email = %s;
+        CASE
+        WHEN EXISTS (SELECT 1 FROM instructor i WHERE i.person_id = p.id) THEN 'instructor'
+        WHEN EXISTS (SELECT 1 FROM staff s WHERE s.person_id = p.id) THEN 'staff'
+        WHEN EXISTS (SELECT 1 FROM student st WHERE st.person_id = p.id) THEN 'student'
+        ELSE 'unknown'
+        END AS role
+        FROM person p
+        WHERE email = %s;
         """
-        cur.execute(query, (username,))   
+        cur.execute(query, (username,))
         user = cur.fetchone()
 
         if not user:
-            return flask.jsonify({'status': StatusCodes['unauthorized'], 'errors': 'User not found', 'results': None})
+            return flask.jsonify({
+                'status': StatusCodes['unauthorized'],
+                'errors': 'User not found',
+                'results': None
+            })
 
         db_password = user[3]
         if db_password != password:
-            return flask.jsonify({'status': StatusCodes['unauthorized'], 'errors': 'Invalid password', 'results': None})
+            return flask.jsonify({
+                'status': StatusCodes['unauthorized'],
+                'errors': 'Invalid password',
+                'results': None
+            })
 
         role = user[4]
 
         token_payload = {
-            'username': username,
-            'id': user[0],
+            'user_id': user[0],  
             'role': role,
             'exp': datetime.now(UTC) + timedelta(hours=1)
         }
 
         token = jwt.encode(token_payload, app.config['JWT_SECRET_KEY'], algorithm='HS256')
-        response = {'status': StatusCodes['success'], 'errors': None, 'results': token}
+        response = {
+            'status': StatusCodes['success'],
+            'errors': None,
+            'results': token
+        }
 
     except (Exception, psycopg2.DatabaseError) as error:
-        response = {'status': StatusCodes['internal_error'], 'errors': str(error), 'results': None}
+        response = {
+            'status': StatusCodes['internal_error'],
+            'errors': str(error),
+            'results': None
+        }
     finally:
         if conn:
             conn.close()
 
     return flask.jsonify(response)
+
 
 @app.route('/dbproj/register/student', methods=['POST'])
 @token_required
@@ -367,9 +405,12 @@ def enroll_degree(degree_id):
 
 @app.route('/dbproj/enroll_activity/<activity_id>', methods=['POST'])
 @token_required
+@role_required(['student'])
 def enroll_activity(activity_id):
     response = {'status': StatusCodes['success'], 'errors': None}
     return flask.jsonify(response)
+
+    # TODO falta atuazlizar a tabela de atividades, atualizar tambem a tabela de pagamentos
 
 @app.route('/dbproj/enroll_course_edition/<course_edition_id>', methods=['POST'])
 @token_required
