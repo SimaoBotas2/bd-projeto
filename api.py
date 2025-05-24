@@ -677,13 +677,11 @@ def submit_grades(course_edition_id):
 @app.route('/dbproj/student_details/<int:student_id>', methods=['GET'])
 @token_required
 @role_required(['staff', 'student'])
-def get_student_details(student_id):
-    user = flask.g.user
-    user_id = user.get('user_id')
-    user_roles = user.get('roles', [])
+def student_details(student_id):
+    user_id = flask.g.user.get('user_id')
+    user_role = flask.g.user.get('role')
 
-    # Apenas staff ou o próprio estudante podem aceder
-    if 'staff' not in user_roles and user_id != student_id:
+    if user_role != 'staff' and user_id != student_id:
         return flask.jsonify({
             'status': StatusCodes['forbidden'],
             'errors': 'Access denied',
@@ -695,30 +693,31 @@ def get_student_details(student_id):
         cur = conn.cursor()
 
         cur.execute("""
-           SELECT 
-    ce.id AS course_edition_id,
-    c.name AS course_name,
-    EXTRACT(YEAR FROM ce.start_date)::INT AS course_edition_year,
-    sg.grade AS grade
-    FROM student_course sc
-    JOIN course_edition ce ON sc.course_edition_id = ce.id
-    JOIN course c ON ce.course_ncourse = c.ncourse
-    LEFT JOIN student_grade sg ON sg.person_id = sc.student_id
-        AND sg.grade_season = EXTRACT(YEAR FROM ce.start_date)::TEXT
-    WHERE sc.student_id = %s
-    ORDER BY course_edition_year DESC
-
+            SELECT DISTINCT
+                ce.id AS course_edition_id,
+                c.name AS course_name,
+                EXTRACT(YEAR FROM ce.start_date)::INT AS course_edition_year,
+                sg.grade,
+                ce.start_date
+            FROM student_course sc
+            JOIN course_edition ce ON sc.course_edition_id = ce.id
+            JOIN course c ON ce.course_ncourse = c.ncourse
+            LEFT JOIN student_grade sg ON sg.person_id = sc.student_id
+                AND RIGHT(sg.grade_season, 4) = EXTRACT(YEAR FROM ce.start_date)::TEXT
+            WHERE sc.student_id = %s
+            ORDER BY ce.start_date DESC
         """, (student_id,))
 
         rows = cur.fetchall()
 
         results = []
-        for course_edition_id, course_name, course_edition_year, grade in rows:
+        for row in rows:
+            course_edition_id, course_name, course_edition_year, grade, _start_date = row
             results.append({
-                "course_edition_id": course_edition_id,
-                "course_name": course_name,
-                "course_edition_year": int(course_edition_year),
-                "grade": grade
+                'course_edition_id': course_edition_id,
+                'course_name': course_name,
+                'course_edition_year': course_edition_year,
+                'grade': grade
             })
 
         return flask.jsonify({
@@ -733,10 +732,10 @@ def get_student_details(student_id):
             'errors': str(e),
             'results': None
         }), 500
-
     finally:
         if conn:
             conn.close()
+
 
 
 @app.route('/dbproj/degree_details/<degree_id>', methods=['GET'])
