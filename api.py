@@ -566,7 +566,7 @@ def submit_grades(course_edition_id):
         conn = db_connection()
         cur = conn.cursor()
 
-    
+        # Pegar info do curso e coordenador
         cur.execute("""
             SELECT c.ncourse, c.ncoordinator
             FROM course_edition ce
@@ -582,7 +582,7 @@ def submit_grades(course_edition_id):
                 'results': None
             }), 404
 
-        course_id, coordinator_id = row
+        course_ncourse, coordinator_id = row
 
         if coordinator_id != instructor_id:
             return flask.jsonify({
@@ -591,24 +591,9 @@ def submit_grades(course_edition_id):
                 'results': None
             }), 403
 
-       
-        cur.execute("""
-            SELECT ndegree FROM course WHERE ncourse = %s
-        """, (course_id,))
-        degree_row = cur.fetchone()
-
-        if not degree_row:
-            return flask.jsonify({
-                'status': StatusCodes['api_error'],
-                'errors': f'Degree not found for course {course_id}',
-                'results': None
-            }), 400
-
-        nddegree = degree_row[0]
-
-        # 3. Para cada estudante e nota, verificar classes e inserir ou atualizar notas
+        # Loop para inserir/atualizar cada grade
         for student_id, grade in grades:
-            # Verificar a classe do estudante no student_course
+            # Buscar classe do estudante nessa edição do curso
             cur.execute("""
                 SELECT class_id FROM student_course 
                 WHERE student_id = %s AND course_edition_id = %s
@@ -624,35 +609,39 @@ def submit_grades(course_edition_id):
 
             class_nclass = class_row[0]
 
-            # Verificar se já existe o registro na student_grade para o estudante e período
+            # Verificar se já existe nota para esse estudante, período e classe
             cur.execute("""
-                SELECT 1 FROM student_grade WHERE person_id = %s AND grade_season = %s
-            """, (student_id, period))
+                SELECT 1 FROM student_grade 
+                WHERE person_id = %s AND grade_season = %s AND class_nclass = %s
+            """, (student_id, period, class_nclass))
             exists = cur.fetchone()
 
             if not exists:
+                # Inserir nova nota, incluindo course_ncourse
                 cur.execute("""
-                    INSERT INTO student_grade (ndegree, grade_season, grade, class_nclass, person_id)
+                    INSERT INTO student_grade (course_ncourse, grade_season, grade, class_nclass, person_id)
                     VALUES (%s, %s, %s, %s, %s)
-                """, (nddegree, period, grade, class_nclass, student_id))
+                """, (course_ncourse, period, grade, class_nclass, student_id))
             else:
+                # Atualizar nota existente
                 cur.execute("""
-                    UPDATE student_grade SET grade = %s, class_nclass = %s
-                    WHERE person_id = %s AND grade_season = %s
-                """, (grade, class_nclass, student_id, period))
+                    UPDATE student_grade 
+                    SET grade = %s, course_ncourse = %s
+                    WHERE person_id = %s AND grade_season = %s AND class_nclass = %s
+                """, (grade, course_ncourse, student_id, period, class_nclass))
 
-            # Verificar/inserir na tabela course_student_grade com course_edition_id
+            # Verificar/inserir na tabela course_student_grade para linkar curso e nota
             cur.execute("""
                 SELECT 1 FROM course_student_grade
                 WHERE course_ncourse = %s AND student_grade_person_id = %s AND course_edition_id = %s
-            """, (course_id, student_id, course_edition_id))
+            """, (course_ncourse, student_id, course_edition_id))
             link_exists = cur.fetchone()
 
             if not link_exists:
                 cur.execute("""
                     INSERT INTO course_student_grade (course_ncourse, student_grade_person_id, course_edition_id)
                     VALUES (%s, %s, %s)
-                """, (course_id, student_id, course_edition_id))
+                """, (course_ncourse, student_id, course_edition_id))
 
         conn.commit()
         return flask.jsonify({
@@ -696,14 +685,14 @@ def student_details(student_id):
             SELECT DISTINCT
                 ce.id AS course_edition_id,
                 c.name AS course_name,
-                EXTRACT(YEAR FROM ce.start_date)::INT AS course_edition_year,
+                ce.year AS course_edition_year,
                 sg.grade,
                 ce.start_date
             FROM student_course sc
             JOIN course_edition ce ON sc.course_edition_id = ce.id
             JOIN course c ON ce.course_ncourse = c.ncourse
             LEFT JOIN student_grade sg ON sg.person_id = sc.student_id
-                AND RIGHT(sg.grade_season, 4) = EXTRACT(YEAR FROM ce.start_date)::TEXT
+                AND sg.course_ncourse = ce.course_ncourse
             WHERE sc.student_id = %s
             ORDER BY ce.start_date DESC
         """, (student_id,))
@@ -737,83 +726,221 @@ def student_details(student_id):
             conn.close()
 
 
-
-@app.route('/dbproj/degree_details/<degree_id>', methods=['GET'])
+@app.route('/dbproj/degree_details/<int:degree_id>', methods=['GET'])
 @token_required
+@role_required(['staff'])
 def degree_details(degree_id):
+    try:
+        conn = db_connection()
+        cur = conn.cursor()
 
-    resultDegreeDetails = [ # TODO
-        {
-            'course_id': random.randint(1, 200),
-            'course_name': "some coure",
-            'course_edition_id': random.randint(1, 200),
-            'course_edition_year': 2023,
-            'capacity': 30,
-            'enrolled_count': 27,
-            'approved_count': 20,
-            'coordinator_id': random.randint(1, 200),
-            'instructors': [random.randint(1, 200), random.randint(1, 200)]
-        }
-    ]
+        cur.execute("""
+            SELECT 
+                c.ncourse AS course_id,
+                c.name AS course_name,
+                ce.id AS course_edition_id,
+                ce.year AS course_edition_year,
+                ce.capacity,
+                COUNT(DISTINCT sc.student_id) AS enrolled_count,
+                COUNT(DISTINCT CASE 
+                    WHEN sg.grade IS NOT NULL AND sg.grade >= 10 THEN sc.student_id 
+                    END) AS approved_count,
+                MIN(ic.instructor_person_id) AS coordinator_id, -- Placeholder for one coordinator
+                ARRAY_AGG(DISTINCT ic.instructor_person_id) AS instructors
+            FROM course c
+            JOIN course_edition ce ON ce.course_ncourse = c.ncourse
+            LEFT JOIN student_course sc ON sc.course_edition_id = ce.id
+            LEFT JOIN student_grade sg ON sg.person_id = sc.student_id AND sg.course_ncourse = c.ncourse
+            LEFT JOIN instructor_course ic ON ic.course_edition_id = ce.id
+            WHERE c.ndegree = %s
+            GROUP BY c.ncourse, c.name, ce.id, ce.year, ce.capacity
+            ORDER BY ce.year DESC, ce.start_date DESC
+        """, (degree_id,))
 
-    response = {'status': StatusCodes['success'], 'errors': None, 'results': resultDegreeDetails}
-    return flask.jsonify(response)
+        rows = cur.fetchall()
+
+        results = []
+        for row in rows:
+            (course_id, course_name, course_edition_id, course_edition_year, capacity,
+             enrolled_count, approved_count, coordinator_id, instructors) = row
+            results.append({
+                'course_id': course_id,
+                'course_name': course_name,
+                'course_edition_id': course_edition_id,
+                'course_edition_year': course_edition_year,
+                'capacity': capacity,
+                'enrolled_count': enrolled_count,
+                'approved_count': approved_count,
+                'coordinator_id': coordinator_id,
+                'instructors': instructors
+            })
+
+        return flask.jsonify({
+            'status': StatusCodes['success'],
+            'errors': None,
+            'results': results
+        })
+
+    except Exception as e:
+        return flask.jsonify({
+            'status': StatusCodes['internal_error'],
+            'errors': str(e),
+            'results': None
+        }), 500
+    finally:
+        if conn:
+            conn.close()
+
+
 
 @app.route('/dbproj/top3', methods=['GET'])
 @token_required
+@role_required(['staff'])
 def top3_students():
+    try:
+        conn = db_connection()
+        cur = conn.cursor()
 
-    resultTop3 = [ # TODO
-        {
-            'student_name': "John Doe",
-            'average_grade': 15.1,
-            'grades': [
-                {
-                    'course_edition_id': random.randint(1, 200),
-                    'course_edition_name': "some course",
-                    'grade': 15.1,
-                    'date': datetime.datetime(2024, 5, 12)
-                }
-            ],
-            'activities': [random.randint(1, 200), random.randint(1, 200)]
-        },
-        {
-            'student_name': "Jane Doe",
-            'average_grade': 16.3,
-            'grades': [
-                {
-                    'course_edition_id': random.randint(1, 200),
-                    'course_edition_name': "another course",
-                    'grade': 15.1,
-                    'date': datetime.datetime(2023, 5, 11)
-                }
-            ],
-            'activities': [random.randint(1, 200)]
-        }
-    ]
+        cur.execute("""WITH valid_grades AS (
+    SELECT 
+        p.id AS student_id,
+        p.name AS student_name,
+        sg.grade,
+        ce.id AS course_edition_id,
+        c.name AS course_edition_name,
+        ce.start_date::DATE,
+        EXTRACT(YEAR FROM ce.start_date)::INT AS year
+    FROM student_grade sg
+    JOIN person p ON p.id = sg.person_id
+    JOIN course c ON c.ncourse = sg.course_ncourse
+    JOIN course_edition ce ON ce.course_ncourse = c.ncourse
+    WHERE EXTRACT(YEAR FROM ce.start_date) = EXTRACT(YEAR FROM CURRENT_DATE)
+      AND sg.grade IS NOT NULL
+),
+student_avg AS (
+    SELECT 
+        student_id,
+        student_name,
+        ROUND(AVG(sg.grade)::numeric, 2) AS average_grade
+    FROM valid_grades sg
+    GROUP BY student_id, student_name
+    ORDER BY average_grade DESC
+    LIMIT 3
+)
+SELECT 
+    sa.student_name,
+    sa.average_grade,
+    JSON_AGG(
+        JSON_BUILD_OBJECT(
+            'course_edition_id', vg.course_edition_id,
+            'course_edition_name', vg.course_edition_name,
+            'grade', vg.grade,
+            'date', vg.start_date
+        )
+        ORDER BY vg.start_date DESC
+    ) AS grades,
+    (
+        SELECT ARRAY_AGG(DISTINCT a.name)
+        FROM student_activity sa2
+        JOIN activity a ON sa2.activity_id = a.id
+        WHERE sa2.student_id = sa.student_id
+    ) AS activities
+FROM student_avg sa
+JOIN valid_grades vg ON vg.student_id = sa.student_id
+GROUP BY sa.student_id, sa.student_name, sa.average_grade
+ORDER BY sa.average_grade DESC;
 
-    response = {'status': StatusCodes['success'], 'errors': None, 'results': resultTop3}
-    return flask.jsonify(response)
 
-@app.route('/dbproj/top_by_district', methods=['GET'])
+    """)
+
+        rows = cur.fetchall()
+        results = []
+        for row in rows:
+            student_name, average_grade, grades, activities = row
+            results.append({
+                'student_name': student_name,
+                'average_grade': average_grade,
+                'grades': grades,
+                'activities': activities
+            })
+
+        return flask.jsonify({
+            'status': StatusCodes['success'],
+            'errors': None,
+            'results': results
+        })
+
+    except Exception as e:
+        return flask.jsonify({
+            'status': StatusCodes['internal_error'],
+            'errors': str(e),
+            'results': None
+        }), 500
+    finally:
+        if conn:
+            conn.close()
+
+
+@app.route('/dbproj/top_by_district/', methods=['GET'])
 @token_required
+@role_required(['staff'])
 def top_by_district():
+    try:
+        conn = db_connection()
+        cur = conn.cursor()
 
-    resultTopByDistrict = [ # TODO
-        {
-            'student_id': random.randint(1, 200),
-            'district': "Coimbra",
-            'average_grade': 15.2
-        },
-        {
-            'student_id': random.randint(1, 200),
-            'district': "Coimbra",
-            'average_grade': 13.6
-        }
-    ]
+        query = """
+            WITH student_avg AS (
+                SELECT 
+                    p.id AS student_id,
+                    s.district,
+                    AVG(sg.grade) AS average_grade
+                FROM student_grade sg
+                JOIN person p ON p.id = sg.person_id
+                JOIN student s ON s.person_id = p.id
+                WHERE sg.grade IS NOT NULL
+                GROUP BY p.id, s.district
+            ),
+            max_avg AS (
+                SELECT district, MAX(average_grade) AS max_average
+                FROM student_avg
+                GROUP BY district
+            )
+            SELECT sa.student_id, sa.district, sa.average_grade
+            FROM student_avg sa
+            JOIN max_avg ma ON sa.district = ma.district AND sa.average_grade = ma.max_average
+            ORDER BY sa.district;
+        """
 
-    response = {'status': StatusCodes['success'], 'errors': None, 'results': resultTopByDistrict}
-    return flask.jsonify(response)
+        cur.execute(query)
+        rows = cur.fetchall()
+
+        results = []
+        for row in rows:
+            student_id, district, average_grade = row
+            results.append({
+                "student_id": student_id,
+                "district": district,
+                "average_grade": float(average_grade)
+            })
+
+        return flask.jsonify({
+            "status": StatusCodes['success'],
+            "errors": None,
+            "results": results
+        })
+
+    except Exception as e:
+        return flask.jsonify({
+            "status": StatusCodes['internal_error'],
+            "errors": str(e),
+            "results": None
+        }), 500
+
+    finally:
+        if conn:
+            conn.close()
+
 
 @app.route('/dbproj/report', methods=['GET'])
 @token_required
