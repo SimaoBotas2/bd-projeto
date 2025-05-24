@@ -130,3 +130,70 @@ INFO:werkzeug: * Debugger PIN: 813-831-135
 INFO:werkzeug:127.0.0.1 - - [22/May/2025 18:21:44] "PUT /dbproj/user HTTP/1.1" 200 -
 INFO:logger:token: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VybmFtZSI6InRlc3R1c2VyQGdtYWlsLmNvbSIsImlkIjoxMDM1LCJyb2xlIjoic3R1ZGVudCIsImV4cCI6MTc0NzkzODEwNH0.DbtcViQTQ2uHzMMhhrycbBmM9eJau4TMRYebT_3cUQQ
 INFO:werkzeug:127.0.0.1 - - [22/May/2025 18:21:46] "POST /dbproj/register/student HTTP/1.1" 200 -
+INFO:logger:API stubs online: http://127.0.0.1:8080
+INFO:werkzeug:[31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on http://127.0.0.1:8080
+INFO:werkzeug:[33mPress CTRL+C to quit[0m
+INFO:werkzeug: * Restarting with stat
+INFO:logger:API stubs online: http://127.0.0.1:8080
+WARNING:werkzeug: * Debugger is active!
+INFO:werkzeug: * Debugger PIN: 813-831-135
+INFO:werkzeug:127.0.0.1 - - [24/May/2025 16:07:30] "[35m[1mPUT /dbproj/user HTTP/1.1[0m" 500 -
+INFO:werkzeug:127.0.0.1 - - [24/May/2025 16:07:34] "[35m[1mPUT /dbproj/user HTTP/1.1[0m" 500 -
+INFO:logger:API stubs online: http://127.0.0.1:8080
+INFO:werkzeug:[31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on http://127.0.0.1:8080
+INFO:werkzeug:[33mPress CTRL+C to quit[0m
+INFO:werkzeug: * Restarting with stat
+INFO:logger:API stubs online: http://127.0.0.1:8080
+WARNING:werkzeug: * Debugger is active!
+INFO:werkzeug: * Debugger PIN: 813-831-135
+INFO:werkzeug:127.0.0.1 - - [24/May/2025 16:08:42] "[35m[1mPUT /dbproj/user HTTP/1.1[0m" 500 -
+INFO:logger:API stubs online: http://127.0.0.1:8080
+INFO:werkzeug:[31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on http://127.0.0.1:8080
+INFO:werkzeug:[33mPress CTRL+C to quit[0m
+INFO:werkzeug: * Restarting with stat
+INFO:logger:API stubs online: http://127.0.0.1:8080
+WARNING:werkzeug: * Debugger is active!
+INFO:werkzeug: * Debugger PIN: 813-831-135
+INFO:werkzeug:127.0.0.1 - - [24/May/2025 16:08:57] "[35m[1mPUT /dbproj/user HTTP/1.1[0m" 500 -
+INFO:werkzeug: * Detected change in 'c:\\Users\\simao\\Desktop\\Uni\\Pasta_Universidade\\4ªAno(2 Informática)\\2ºSemestre\\Bases de Dados\\Projeto\\projeto\\bd-projeto\\api.py', reloading
+INFO:werkzeug: * Restarting with stat
+INFO:logger:API stubs online: http://127.0.0.1:8080
+INFO:werkzeug:[31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on http://127.0.0.1:8080
+INFO:werkzeug:[33mPress CTRL+C to quit[0m
+INFO:werkzeug: * Restarting with stat
+INFO:logger:API stubs online: http://127.0.0.1:8080
+WARNING:werkzeug: * Debugger is active!
+INFO:werkzeug: * Debugger PIN: 813-831-135
+INFO:werkzeug:127.0.0.1 - - [24/May/2025 16:09:41] "PUT /dbproj/user HTTP/1.1" 200 -
+INFO:werkzeug: * Detected change in 'c:\\Users\\simao\\Desktop\\Uni\\Pasta_Universidade\\4ªAno(2 Informática)\\2ºSemestre\\Bases de Dados\\Projeto\\projeto\\bd-projeto\\api.py', reloading
+INFO:werkzeug: * Restarting with stat
+INFO:logger:API stubs online: http://127.0.0.1:8080
+INFO:werkzeug:[31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on http://127.0.0.1:8080
+INFO:werkzeug:[33mPress CTRL+C to quit[0m
+INFO:werkzeug: * Restarting with stat
+INFO:logger:API stubs online: http://127.0.0.1:8080
+WARNING:werkzeug: * Debugger is active!
+INFO:werkzeug: * Debugger PIN: 813-831-135
+INFO:werkzeug:127.0.0.1 - - [24/May/2025 16:10:07] "PUT /dbproj/user HTTP/1.1" 200 -
+INFO:werkzeug:127.0.0.1 - - [24/May/2025 16:10:13] "PUT /dbproj/user HTTP/1.1" 200 -
+INFO:werkzeug: * Detected change in 'c:\\Users\\simao\\Desktop\\Uni\\Pasta_Universidade\\4ªAno(2 Informática)\\2ºSemestre\\Bases de Dados\\Projeto\\projeto\\bd-projeto\\api.py', reloading
+INFO:werkzeug: * Restarting with stat
+INFO:logger:API stubs online: http://127.0.0.1:8080
+WARNING:werkzeug: * Debugger is active!
+INFO:werkzeug: * Debugger PIN: 813-831-135
+INFO:logger:API stubs online: http://127.0.0.1:8080
+INFO:werkzeug:[31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on http://127.0.0.1:8080
+INFO:werkzeug:[33mPress CTRL+C to quit[0m
+INFO:werkzeug: * Restarting with stat
+INFO:logger:API stubs online: http://127.0.0.1:8080
+WARNING:werkzeug: * Debugger is active!
+INFO:werkzeug: * Debugger PIN: 813-831-135
+INFO:werkzeug:127.0.0.1 - - [24/May/2025 16:10:40] "PUT /dbproj/user HTTP/1.1" 200 -
+INFO:werkzeug:127.0.0.1 - - [24/May/2025 16:10:47] "POST /dbproj/register/student HTTP/1.1" 200 -
+INFO:werkzeug:127.0.0.1 - - [24/May/2025 16:10:49] "POST /dbproj/register/student HTTP/1.1" 200 -

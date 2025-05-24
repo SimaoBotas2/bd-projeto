@@ -20,8 +20,6 @@ import flask
 from flask import g
 import logging
 import psycopg2
-import time
-import random
 from datetime import datetime,timedelta,UTC
 import jwt
 from functools import wraps
@@ -36,26 +34,39 @@ StatusCodes = {
     'unauthorized': 401
 }
 
-
 ##########################################################
 ## DATABASE ACCESS
 ##########################################################
 
+import psycopg2
+
+
+def read_config(filename='config.txt'):
+    config = {}
+    with open(filename, 'r') as f:
+        for line in f:
+            line = line.strip()
+            if not line or line.startswith('#'):
+                continue
+            key, value = line.split('=', 1)
+            config[key.strip()] = value.strip()
+    return config
+
 def db_connection():
+    config = read_config()
+    try:
+        conn = psycopg2.connect(
+            user=config['user'],
+            password=config['password'],
+            host=config['host'],
+            port=config['port'],
+            database=config['database']
+        )
+        return conn
+    except Exception as e:
+        print("Erro na conexão:", e)
+        return None
 
-
-
-    db = psycopg2.connect(
-
-        #Falta mudar isto para um ficheiro
-        user='aulaspl',
-        password='aulaspl',
-        host='127.0.0.1',
-        port='5432',
-        database='dbproject'
-    )
-
-    return db
 
 ##########################################################
 ## AUTHENTICATION HELPERS
@@ -126,7 +137,9 @@ def role_required(allowed_roles):
 ##########################################################
 
 @app.route('/dbproj/user', methods=['PUT'])
+
 def login_user():
+    conn = None
     data = flask.request.get_json()
     username = data.get('email')
     password = data.get('password')
@@ -304,8 +317,8 @@ def register_staff():
 
 
 @app.route('/dbproj/register/instructor', methods=['POST'])
-@role_required(['staff'])
 @token_required
+@role_required(['staff'])
 def register_instructor():
     data = flask.request.get_json()
     username = data.get('username')
@@ -322,8 +335,6 @@ def register_instructor():
     try:
         conn = db_connection()
         cur = conn.cursor()
-
-        # 1. Inserir na tabela person
         cur.execute(
             """
             INSERT INTO person (name, email, password)
@@ -334,7 +345,6 @@ def register_instructor():
         )
         person_id = cur.fetchone()[0]
 
-        # 2. Inserir na tabela instructor
         cur.execute(
             """
             INSERT INTO instructor (person_id)
@@ -379,7 +389,7 @@ def enroll_degree(degree_id):
         conn = db_connection()
         cur = conn.cursor()
 
-        # Inserção na tabela de associação
+  
         cur.execute("""
             INSERT INTO student_degree (student_id, degree_ndegree, start_date)
             VALUES (%s, %s, %s)
@@ -409,7 +419,7 @@ def enroll_degree(degree_id):
 @token_required
 @role_required(['student'])
 def enroll_activity(activity_id):
-    user_id = flask.g.user.get('user_id')  
+    user_id = flask.g.user.get('user_id')
 
     try:
         conn = db_connection()
@@ -455,8 +465,6 @@ def enroll_activity(activity_id):
 @role_required(['student'])
 def enroll_course_edition(course_edition_id):
 
-    #falta confirmar se o estudante ja está inscrito na edição do curso
-    #falta confirmar se as classes existem
     student_id = flask.g.user.get('user_id')
     data = flask.request.get_json()
     classes = data.get('classes', [])
@@ -486,7 +494,6 @@ def enroll_course_edition(course_edition_id):
                 'results': None
             }), 403
 
-        # Get course and its degree for this course_edition
         cur.execute("""
             SELECT c.ndegree
             FROM course_edition ce
@@ -503,7 +510,7 @@ def enroll_course_edition(course_edition_id):
 
         course_degree = course_row[0]
 
-        # Verify student is enrolled in course degree
+
         if course_degree not in student_degrees:
             return flask.jsonify({
                 'status': StatusCodes['forbidden'],
@@ -511,8 +518,6 @@ def enroll_course_edition(course_edition_id):
                 'results': None
             }), 403
 
-        # Enroll student in each class for this course edition
-        # fazer verificação se a turma existe
         for class_id in classes:
             try:
                 cur.execute("""
@@ -609,6 +614,22 @@ def submit_grades(course_edition_id):
 
             class_nclass = class_row[0]
 
+
+            cur.execute("""
+                SELECT degree_ndegree FROM student_degree 
+                WHERE student_id = %s
+                ORDER BY student_id DESC LIMIT 1
+            """, (student_id,))
+            degree_row = cur.fetchone()
+            if not degree_row:
+                return flask.jsonify({
+                    'status': StatusCodes['api_error'],
+                    'errors': f'Student {student_id} has no degree assigned',
+                    'results': None
+                }), 400
+
+            ndegree = degree_row[0]
+
             # Verificar se já existe nota para esse estudante, período e classe
             cur.execute("""
                 SELECT 1 FROM student_grade 
@@ -617,18 +638,18 @@ def submit_grades(course_edition_id):
             exists = cur.fetchone()
 
             if not exists:
-                # Inserir nova nota, incluindo course_ncourse
+                # Inserir nova nota, incluindo course_ncourse e ndegree
                 cur.execute("""
-                    INSERT INTO student_grade (course_ncourse, grade_season, grade, class_nclass, person_id)
-                    VALUES (%s, %s, %s, %s, %s)
-                """, (course_ncourse, period, grade, class_nclass, student_id))
+                    INSERT INTO student_grade (ndegree, course_ncourse, grade_season, grade, class_nclass, person_id)
+                    VALUES (%s, %s, %s, %s, %s, %s)
+                """, (ndegree, course_ncourse, period, grade, class_nclass, student_id))
             else:
                 # Atualizar nota existente
                 cur.execute("""
                     UPDATE student_grade 
-                    SET grade = %s, course_ncourse = %s
+                    SET grade = %s, course_ncourse = %s, ndegree = %s
                     WHERE person_id = %s AND grade_season = %s AND class_nclass = %s
-                """, (grade, course_ncourse, student_id, period, class_nclass))
+                """, (grade, course_ncourse, ndegree, student_id, period, class_nclass))
 
             # Verificar/inserir na tabela course_student_grade para linkar curso e nota
             cur.execute("""
@@ -660,7 +681,6 @@ def submit_grades(course_edition_id):
     finally:
         if conn:
             conn.close()
-
 
 
 @app.route('/dbproj/student_details/<int:student_id>', methods=['GET'])
@@ -944,33 +964,104 @@ def top_by_district():
 
 @app.route('/dbproj/report', methods=['GET'])
 @token_required
+@role_required(['staff'])
 def monthly_report():
+    try:
+        conn = db_connection()
+        cur = conn.cursor()
 
-    resultReport = [ # TODO
-        {
-            'month': "month_0",
-            'course_edition_id': random.randint(1, 200),
-            'course_edition_name': "Some course",
-            'approved': 20,
-            'evaluated': 23
-        },
-        {
-            'month': "month_1",
-            'course_edition_id': random.randint(1, 200),
-            'course_edition_name': "Another course",
-            'approved': 200,
-            'evaluated': 123
-        }
-    ]
+        query = """
+            WITH months AS (
+        SELECT
+            generate_series(
+                date_trunc('month', current_date) - interval '11 months',
+                date_trunc('month', current_date),
+                interval '1 month'
+            ) AS month_start
+    ),
+    grades_per_month AS (
+        SELECT
+            date_trunc('month', ce.start_date) AS month,
+            ce.id AS course_edition_id,
+            c.name AS course_edition_name,
+            COUNT(*) FILTER (WHERE sg.grade >= 10) AS approved,
+            COUNT(*) AS evaluated
+        FROM student_grade sg
+        JOIN course c ON c.ncourse = sg.course_ncourse
+        JOIN course_edition ce ON ce.course_ncourse = c.ncourse
+        WHERE sg.grade IS NOT NULL
+        AND (ce.year = EXTRACT(YEAR FROM CURRENT_DATE) 
+            OR ce.year = EXTRACT(YEAR FROM CURRENT_DATE) - 1)
+        -- Opcional: se quiser restringir por semestre, pode adaptar aqui
+        GROUP BY month, ce.id, c.name
+    )
+    SELECT
+        to_char(m.month_start, 'YYYY-MM') AS month,
+        g.course_edition_id,
+        g.course_edition_name,
+        COALESCE(g.approved, 0) AS approved,
+        COALESCE(g.evaluated, 0) AS evaluated
+    FROM months m
+    LEFT JOIN grades_per_month g ON g.month = m.month_start
+    ORDER BY m.month_start DESC, approved DESC;
 
-    response = {'status': StatusCodes['success'], 'errors': None, 'results': resultReport}
-    return flask.jsonify(response)
+        """
 
-@app.route('/dbproj/delete_details/<student_id>', methods=['DELETE'])
+        cur.execute(query)
+        rows = cur.fetchall()
+
+        results = []
+        for row in rows:
+            month, course_edition_id, course_edition_name, approved, evaluated = row
+            # Se não houver course_edition_id (ou seja, mês sem dados), pode pular ou incluir com nulls
+            if course_edition_id is None:
+                continue
+            results.append({
+                'month': month,
+                'course_edition_id': course_edition_id,
+                'course_edition_name': course_edition_name,
+                'approved': approved,
+                'evaluated': evaluated
+            })
+
+        return flask.jsonify({
+            'status': 200,
+            'errors': None,
+            'results': results
+        })
+
+    except Exception as e:
+        return flask.jsonify({
+            'status': 500,
+            'errors': str(e),
+            'results': None
+        })
+    finally:
+        if conn:
+            conn.close()
+
+@app.route('/dbproj/delete_details/<int:student_id>', methods=['DELETE'])
 @token_required
+@role_required(['staff'])
 def delete_student(student_id):
-    response = {'status': StatusCodes['success'], 'errors': None}
-    return flask.jsonify(response)
+    try:
+        conn = db_connection()
+        cur = conn.cursor()
+
+        cur.execute("DELETE FROM person WHERE id = %s", (student_id,))
+
+        conn.commit()
+
+        return flask.jsonify({'status': 200, 'errors': None, 'results': f'Student {student_id} deleted successfully'})
+
+    except Exception as error:
+        conn.rollback()
+        return flask.jsonify({'status': 500, 'errors': str(error), 'results': None})
+
+    finally:
+        if conn:
+            conn.close()
+
 
 if __name__ == '__main__':
     # set up logging
