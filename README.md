@@ -24,8 +24,6 @@ University project for the *Bases de Dados* (Databases) course, Computer Enginee
 
 Simplified overview, built from the table names in `schema.sql`.
 
-<!-- TODO: confirm relationships against schema.sql, or replace with the ER diagram from the project report -->
-
 ```mermaid
 erDiagram
     PERSON ||--o| STUDENT : is
@@ -64,8 +62,6 @@ All endpoints except login require `Authorization: Bearer <token>`.
 | GET | `/dbproj/report` | staff | Monthly approvals report |
 | DELETE | `/dbproj/delete_details/<id>` | staff | Delete a student's details |
 
-<!-- TODO: add request/response examples (curl or a Postman/Insomnia collection) -->
-
 ## Getting Started
 
 ### Prerequisites
@@ -96,8 +92,6 @@ The server runs on `http://127.0.0.1:8080`.
 
 The reporting endpoints use more advanced SQL: CTEs, `JSON_AGG` and `generate_series` (monthly report).
 
-<!-- TODO: add details on the queries or design decisions you want to highlight -->
-
 ## Authors
 
-Simão Carvalho, <!-- TODO: colegas --> · University of Coimbra · Computer Engineering
+Simão Carvalho · University of Coimbra · Computer Engineering

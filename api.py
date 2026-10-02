@@ -15,7 +15,7 @@
 ##   Nuno Antunes <nmsa@dei.uc.pt>
 ##   University of Coimbra
 ##
-## Developed by: Simão Carvalho, [TODO: colegas]
+## Developed by: Simão Carvalho
 
 
 import flask
