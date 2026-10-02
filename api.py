@@ -10,10 +10,12 @@
 ## =========== University of Coimbra ===========
 ## =============================================
 ##
-## Authors:
+## Based on the Bases de Dados demo template by
 ##   João R. Campos <jrcampos@dei.uc.pt>
 ##   Nuno Antunes <nmsa@dei.uc.pt>
 ##   University of Coimbra
+##
+## Developed by: Simão Carvalho, [TODO: colegas]
 
 
 import flask
@@ -22,16 +24,20 @@ import logging
 import psycopg2
 from datetime import datetime,timedelta,UTC
 import jwt
+import bcrypt
+import os
 from functools import wraps
 
 app = flask.Flask(__name__)
-app.config['JWT_SECRET_KEY'] = 'some_jwt_secret_key'
+app.config['JWT_SECRET_KEY'] = os.environ.get('JWT_SECRET_KEY', 'dev-only-change-me')
 
 StatusCodes = {
     'success': 200,
     'api_error': 400,
-    'internal_error': 500,
-    'unauthorized': 401
+    'unauthorized': 401,
+    'forbidden': 403,
+    'not_found': 404,
+    'internal_error': 500
 }
 
 ##########################################################
@@ -51,6 +57,10 @@ def read_config(filename='config.txt'):
             key, value = line.split('=', 1)
             config[key.strip()] = value.strip()
     return config
+
+def hash_password(password):
+    return bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
+
 
 def db_connection():
     config = read_config()
@@ -177,7 +187,7 @@ def login_user():
             })
 
         db_password = user[3]
-        if db_password != password:
+        if not bcrypt.checkpw(password.encode(), db_password.encode()):
             return flask.jsonify({
                 'status': StatusCodes['unauthorized'],
                 'errors': 'Invalid password',
@@ -216,6 +226,7 @@ def login_user():
 @token_required
 @role_required(['staff'])
 def register_student():
+    conn = None
     data = flask.request.get_json()
     username = data.get('username')
     email = data.get('email')
@@ -235,7 +246,7 @@ def register_student():
         VALUES (%s, %s, %s)
         RETURNING id
         """,
-        (username, email, password)
+        (username, email, hash_password(password))
         )
         person_id = cur.fetchone()[0]
 
@@ -252,7 +263,8 @@ def register_student():
         return flask.jsonify({'status': StatusCodes['success'], 'errors': None, 'results': person_id})
 
     except Exception as error:
-        conn.rollback()
+        if conn:
+            conn.rollback()
         return flask.jsonify({'status': StatusCodes['internal_error'], 'errors': str(error), 'results': None})
 
     finally:
@@ -263,6 +275,7 @@ def register_student():
 @token_required
 @role_required(['staff'])
 def register_staff():
+    conn = None
     data = flask.request.get_json()
     username = data.get('username')
     email = data.get('email')
@@ -286,7 +299,7 @@ def register_staff():
             VALUES (%s, %s, %s)
             RETURNING id
             """,
-            (username, email, password)
+            (username, email, hash_password(password))
         )
         person_id = cur.fetchone()[0]
 
@@ -303,7 +316,8 @@ def register_staff():
         return flask.jsonify({'status': StatusCodes['success'], 'errors': None, 'results': person_id})
 
     except Exception as error:
-        conn.rollback()
+        if conn:
+            conn.rollback()
         return flask.jsonify({
             'status': StatusCodes['internal_error'],
             'errors': str(error),
@@ -320,6 +334,7 @@ def register_staff():
 @token_required
 @role_required(['staff'])
 def register_instructor():
+    conn = None
     data = flask.request.get_json()
     username = data.get('username')
     email = data.get('email')
@@ -341,7 +356,7 @@ def register_instructor():
             VALUES (%s, %s, %s)
             RETURNING id
             """,
-            (username, email, password)
+            (username, email, hash_password(password))
         )
         person_id = cur.fetchone()[0]
 
@@ -362,7 +377,8 @@ def register_instructor():
         })
 
     except Exception as error:
-        conn.rollback()
+        if conn:
+            conn.rollback()
         return flask.jsonify({
             'status': StatusCodes['internal_error'],
             'errors': str(error),
@@ -378,6 +394,7 @@ def register_instructor():
 @token_required
 @role_required(['staff'])
 def enroll_degree(degree_id):
+    conn = None
     data = flask.request.get_json()
     student_id = data.get('student_id')
     date = data.get('date')
@@ -404,7 +421,8 @@ def enroll_degree(degree_id):
         })
 
     except Exception as e:
-        conn.rollback()
+        if conn:
+            conn.rollback()
         return flask.jsonify({
             'status': StatusCodes['internal_error'],
             'errors': str(e),
@@ -419,6 +437,7 @@ def enroll_degree(degree_id):
 @token_required
 @role_required(['student'])
 def enroll_activity(activity_id):
+    conn = None
     user_id = flask.g.user.get('user_id')
 
     try:
@@ -441,7 +460,8 @@ def enroll_activity(activity_id):
         }
   
     except psycopg2.IntegrityError:
-        conn.rollback()
+        if conn:
+            conn.rollback()
         response = {
             'status': StatusCodes['api_error'],
             'errors': 'Enrollment already exists or invalid activity_id',
@@ -464,6 +484,7 @@ def enroll_activity(activity_id):
 @token_required
 @role_required(['student'])
 def enroll_course_edition(course_edition_id):
+    conn = None
 
     student_id = flask.g.user.get('user_id')
     data = flask.request.get_json()
@@ -526,7 +547,8 @@ def enroll_course_edition(course_edition_id):
                     ON CONFLICT (student_id, course_edition_id, class_id) DO NOTHING
                 """, (student_id, course_edition_id, class_id))
             except Exception as e:
-                conn.rollback()
+                if conn:
+                    conn.rollback()
                 return flask.jsonify({
                     'status': StatusCodes['internal_error'],
                     'errors': f'Failed to enroll in class {class_id}: {str(e)}',
@@ -554,6 +576,7 @@ def enroll_course_edition(course_edition_id):
 @token_required
 @role_required(['instructor'])
 def submit_grades(course_edition_id):
+    conn = None
     data = flask.request.get_json()
     period = data.get('period')
     grades = data.get('grades')
@@ -672,7 +695,8 @@ def submit_grades(course_edition_id):
         })
 
     except Exception as e:
-        conn.rollback()
+        if conn:
+            conn.rollback()
         return flask.jsonify({
             'status': StatusCodes['internal_error'],
             'errors': str(e),
@@ -687,6 +711,7 @@ def submit_grades(course_edition_id):
 @token_required
 @role_required(['staff', 'student'])
 def student_details(student_id):
+    conn = None
     user_id = flask.g.user.get('user_id')
     user_role = flask.g.user.get('role')
 
@@ -750,6 +775,7 @@ def student_details(student_id):
 @token_required
 @role_required(['staff'])
 def degree_details(degree_id):
+    conn = None
     try:
         conn = db_connection()
         cur = conn.cursor()
@@ -817,6 +843,7 @@ def degree_details(degree_id):
 @token_required
 @role_required(['staff'])
 def top3_students():
+    conn = None
     try:
         conn = db_connection()
         cur = conn.cursor()
@@ -905,6 +932,7 @@ ORDER BY sa.average_grade DESC;
 @token_required
 @role_required(['staff'])
 def top_by_district():
+    conn = None
     try:
         conn = db_connection()
         cur = conn.cursor()
@@ -966,6 +994,7 @@ def top_by_district():
 @token_required
 @role_required(['staff'])
 def monthly_report():
+    conn = None
     try:
         conn = db_connection()
         cur = conn.cursor()
@@ -1044,6 +1073,7 @@ def monthly_report():
 @token_required
 @role_required(['staff'])
 def delete_student(student_id):
+    conn = None
     try:
         conn = db_connection()
         cur = conn.cursor()
@@ -1055,7 +1085,8 @@ def delete_student(student_id):
         return flask.jsonify({'status': 200, 'errors': None, 'results': f'Student {student_id} deleted successfully'})
 
     except Exception as error:
-        conn.rollback()
+        if conn:
+            conn.rollback()
         return flask.jsonify({'status': 500, 'errors': str(error), 'results': None})
 
     finally:
